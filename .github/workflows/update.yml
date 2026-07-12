@@ -46,8 +46,7 @@ jobs:
           ISSUE=$(python3 -c "import json; print(json.load(open('data/history.json'))['data'][0]['issue'])")
           DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           git commit -m "chore(data): update SSQ history to issue $ISSUE ($DATE)"
-          # 拉远端再 push（处理外部 commit）
-          git fetch origin main
-          git rebase origin/main || git merge origin/main --no-edit
+          # 如果远端有更新，pull --ff-only（fetch_ssq 在 history.json 上的更新与远端一般不冲突）
+          git pull --ff-only origin main || { echo "ff-only failed, try rebase"; git pull --rebase origin main; }
           git push origin main
         shell: bash
