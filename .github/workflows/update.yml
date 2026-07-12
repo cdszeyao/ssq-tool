@@ -1,12 +1,9 @@
 name: update-ssq-data
 
 on:
-  # 每天北京时间 22:00 跑（UTC 14:00）
   schedule:
     - cron: "0 14 * * *"
-  # 允许手动触发（测试用）
   workflow_dispatch:
-  # 推送时也跑一次（便于联调）
   push:
     paths:
       - 'scripts/**'
@@ -29,8 +26,7 @@ jobs:
           python-version: "3.12"
 
       - name: Fetch latest data
-        run: |
-          python3 scripts/fetch_ssq.py
+        run: python3 scripts/fetch_ssq.py
         shell: bash
 
       - name: Verify JSON
@@ -50,5 +46,8 @@ jobs:
           ISSUE=$(python3 -c "import json; print(json.load(open('data/history.json'))['data'][0]['issue'])")
           DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           git commit -m "chore(data): update SSQ history to issue $ISSUE ($DATE)"
-          git push
+          # 拉远端再 push（处理外部 commit）
+          git fetch origin main
+          git rebase origin/main || git merge origin/main --no-edit
+          git push origin main
         shell: bash
