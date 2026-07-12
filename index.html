@@ -1219,9 +1219,34 @@ function getTrendNumbers(entries, count) {
 // ─── Fetch Latest Data from Web ───
 async function fetchLatestData() {
   const statusEl = document.getElementById('fetchStatus');
-  if (statusEl) statusEl.textContent = '正在获取最新开奖数据...';
+  if (statusEl) statusEl.textContent = '正在加载最新数据...';
 
-  // 尝试多个 CORS 代理
+  // 1) 优先 fetch 本地 JSON（GitHub Actions 每日更新）
+  try {
+    const r = await fetch('./data/history.json?t=' + Date.now(), { cache: 'no-store' });
+    if (r.ok) {
+      const j = await r.json();
+      const arr = (j && Array.isArray(j.data)) ? j.data : [];
+      if (arr.length > 0) {
+        historyData.length = 0;
+        arr.forEach(item => {
+          historyData.push([
+            item.issue,
+            ...(item.reds || []),
+            item.blue,
+            item.date || ''
+          ]);
+        });
+        currentIssueIndex = 0;
+        if (statusEl) statusEl.textContent = '已更新至第' + historyData[0][0] + '期 · 数据日期 ' + (j.updated || '');
+        return true;
+      }
+    }
+  } catch (e) {
+    console.log('Local JSON fetch failed:', e.message);
+  }
+
+  // 2) 兜底：CORS 代理抓 500.com
   const proxies = [
     'https://api.allorigins.win/raw?url=',
     'https://api.codetabs.com/v1/proxy?quest='
@@ -1235,10 +1260,9 @@ async function fetchLatestData() {
       const html = await resp.text();
       const parsed = parseHistoryHtml(html);
       if (parsed && parsed.length > 0) {
-        // 更新 historyData
         historyData.length = 0;
         parsed.forEach(p => historyData.push(p));
-        if (statusEl) statusEl.textContent = '数据已更新至第' + historyData[0][0] + '期';
+        if (statusEl) statusEl.textContent = '已更新至第' + historyData[0][0] + '期（代理）';
         return true;
       }
     } catch (e) {
